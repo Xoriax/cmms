@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crypto Market Monitor — Real-Time Pipeline</title>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --green:     #3fb950;
+    --red:       #f85149;
+    --yellow:    #d29922;
+    --blue:      #58a6ff;
+    --purple:    #bc8cff;
+    --orange:    #ffa657;
+    --binance:   #f0b90b;
+    --coinbase:  #0052ff;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── Header ──────────────────────────────────────────────────────── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 { font-size: 14px; font-weight: 600; letter-spacing: .5px; flex: 1; }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--red);
+    display: inline-block; margin-right: 6px;
+    transition: background .3s;
+  }
+  .live-dot.live { background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: .4; }
+  }
+
+  /* ── Ticker bar ──────────────────────────────────────────────────── */
+  .ticker {
+    background: #0d1117;
+    border-bottom: 1px solid var(--border);
+    padding: 6px 20px;
+    display: flex;
+    gap: 32px;
+    overflow-x: auto;
+  }
+  .ticker-item { display: flex; flex-direction: column; gap: 1px; min-width: 140px; }
+  .ticker-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .ticker-price { font-size: 15px; font-weight: 700; }
+  .ticker-change { font-size: 11px; }
+  .up   { color: var(--green); }
+  .down { color: var(--red); }
+
+  /* ── Main grid ───────────────────────────────────────────────────── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    grid-template-rows: auto auto;
+    gap: 1px;
+    background: var(--border);
+    border-top: none;
+  }
+  .panel {
+    background: var(--surface);
+    padding: 16px;
+  }
+
+  /* ── KPI cards ───────────────────────────────────────────────────── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .kpi {
+    background: var(--surface);
+    padding: 14px 16px;
+  }
+  .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .kpi-value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .kpi-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Chart panel ─────────────────────────────────────────────────── */
+  .chart-panel {
+    padding: 16px;
+    background: var(--surface);
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .panel-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .6px; color: var(--muted); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title span { color: var(--text); }
+  canvas { width: 100% !important; }
+
+  /* ── Right column ────────────────────────────────────────────────── */
+  .right-col {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  /* ── Trades feed ─────────────────────────────────────────────────── */
+  .trades-panel { background: var(--surface); padding: 14px; flex: 1; overflow: hidden; }
+  .trade-list { max-height: 220px; overflow-y: auto; }
+  .trade-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; border-bottom: 1px solid var(--border);
+    font-size: 12px; gap: 8px;
+  }
+  .trade-item:last-child { border-bottom: none; }
+  .trade-price { font-weight: 700; min-width: 80px; }
+  .trade-vol   { color: var(--muted); font-size: 11px; }
+  .trade-source {
+    font-size: 10px; padding: 1px 5px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: .3px;
+  }
+  .source-binance  { background: rgba(240,185,11,.15); color: var(--binance); }
+  .source-coinbase { background: rgba(0,82,255,.15);   color: #5c8aff; }
+  .trade-time { color: var(--muted); font-size: 10px; min-width: 55px; text-align: right; }
+
+  /* ── Alerts panel ────────────────────────────────────────────────── */
+  .alerts-panel { background: var(--surface); padding: 14px; }
+  .alert-list { max-height: 200px; overflow-y: auto; }
+  .alert-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 6px 0; border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+  .alert-LARGE_VOLUME { background: var(--orange); }
+  .alert-PRICE_SPIKE  { background: var(--yellow); }
+  .alert-text  { color: var(--text); line-height: 1.4; }
+  .alert-meta  { color: var(--muted); font-size: 10px; margin-top: 2px; }
+
+  /* ── Bottom row ──────────────────────────────────────────────────── */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Volume bar chart ────────────────────────────────────────────── */
+  .vol-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .vol-table td { padding: 4px 0; font-size: 12px; }
+  .vol-table td:last-child { text-align: right; color: var(--blue); font-weight: 600; }
+  .vol-bar-wrap { background: var(--border); border-radius: 2px; height: 6px; margin: 2px 0; overflow: hidden; }
+  .vol-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width .5s; }
+
+  /* ── Health panel ────────────────────────────────────────────────── */
+  .health-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .health-row  { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  .health-label { color: var(--muted); }
+  .health-val   { display: flex; align-items: center; gap: 5px; }
+  .status-dot   { width: 7px; height: 7px; border-radius: 50%; }
+  .ok   { background: var(--green); }
+  .warn { background: var(--yellow); }
+  .err  { background: var(--red); }
+
+  /* ── Scrollbar ───────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Footer ──────────────────────────────────────────────────────── */
+  footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 6px 20px;
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    gap: 16px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<header>
+  <span style="font-size:18px">&#128200;</span>
+  <h1>Crypto Market Monitor &mdash; Real-Time Pipeline</h1>
+  <span id="binance-badge" style="font-size:11px;padding:2px 8px;border-radius:3px;background:rgba(240,185,11,.15);color:#f0b90b">Binance</span>
+  <span id="coinbase-badge" style="font-size:11px;padding:2px 8px;border-radius:3px;background:rgba(0,82,255,.15);color:#5c8aff">Coinbase</span>
+  <span><span class="live-dot" id="live-dot"></span><span id="live-label" style="font-size:11px;color:var(--muted)">Connecting...</span></span>
+</header>
+
+<!-- ── Ticker ──────────────────────────────────────────────────────────── -->
+<div class="ticker">
+  <div class="ticker-item">
+    <span class="ticker-label">BTC/USDT</span>
+    <span class="ticker-price" id="tick-BTCUSDT">$107,000.00</span>
+    <span class="ticker-change" id="tick-BTCUSDT-chg">+0.00%</span>
+  </div>
+  <div class="ticker-item">
+    <span class="ticker-label">ETH/USDT</span>
+    <span class="ticker-price" id="tick-ETHUSDT">$2,500.00</span>
+    <span class="ticker-change" id="tick-ETHUSDT-chg">+0.00%</span>
+  </div>
+  <div class="ticker-item">
+    <span class="ticker-label">BTC-USD (Coinbase)</span>
+    <span class="ticker-price" id="tick-BTCUSD">$107,000.00</span>
+    <span class="ticker-change" id="tick-BTCUSD-chg">+0.00%</span>
+  </div>
+  <div class="ticker-item">
+    <span class="ticker-label">ETH-USD (Coinbase)</span>
+    <span class="ticker-price" id="tick-ETHUSD">$2,500.00</span>
+    <span class="ticker-change" id="tick-ETHUSD-chg">+0.00%</span>
+  </div>
+</div>
+
+<!-- ── KPI Cards ───────────────────────────────────────────────────────── -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">BTC/USDT — Prix actuel</div>
+    <div class="kpi-value" id="kpi-btc-price">$107,000.00</div>
+    <div class="kpi-sub" id="kpi-btc-chg">+0.00% vs 1h</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Vol glissant 5 min</div>
+    <div class="kpi-value" id="kpi-vol-5m">$0.00</div>
+    <div class="kpi-sub" id="kpi-vol-5m-sub">0 trades</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Trades / seconde</div>
+    <div class="kpi-value" id="kpi-tps">0.0</div>
+    <div class="kpi-sub">Binance + Coinbase</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Anomalies détectées</div>
+    <div class="kpi-value" id="kpi-alerts">0</div>
+    <div class="kpi-sub">&#9651; dernières 10 min</div>
+  </div>
+</div>
+
+<!-- ── Main grid ───────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- Chart -->
+  <div class="chart-panel">
+    <div class="panel-title">
+      &#9650; PRIX BTC/USDT &mdash; FENÊTRE GLISSANTE 30 MIN
+      <span id="chart-moy-label">Moy. mobile ×2</span>
+    </div>
+    <canvas id="priceChart" height="200"></canvas>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted);display:flex;gap:20px">
+      <span><span style="display:inline-block;width:12px;height:2px;background:#58a6ff;vertical-align:middle;margin-right:4px"></span>Prix BTC</span>
+      <span><span style="display:inline-block;width:12px;height:2px;background:#bc8cff;vertical-align:middle;margin-right:4px"></span>Moy. mobile</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f85149;vertical-align:middle;margin-right:4px"></span>Trade anormal</span>
+    </div>
+  </div>
+
+  <!-- Right column -->
+  <div class="right-col">
+
+    <!-- Trades feed -->
+    <div class="trades-panel">
+      <div class="panel-title">&#9889; TRADES RÉCENTS <span style="margin-left:auto;font-size:10px;color:var(--green)">live feed</span></div>
+      <div class="trade-list" id="trade-list"></div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="alerts-panel">
+      <div class="panel-title">&#9889; ALERTES TEMPS RÉEL</div>
+      <div class="alert-list" id="alert-list">
+        <div style="color:var(--muted);font-size:11px;padding:8px 0">Aucune alerte pour le moment...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Bottom row ──────────────────────────────────────────────────────── -->
+<div class="bottom-row">
+
+  <!-- Volume per window -->
+  <div class="panel">
+    <div class="panel-title">&#9641; VOLUME PAR FENÊTRE (BTC)</div>
+    <table class="vol-table" id="vol-table">
+      <tr><td>1 min</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-1min" style="width:0%"></div></div></td><td id="vval-1min">$0.00</td></tr>
+      <tr><td>5 min</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-5min" style="width:0%"></div></div></td><td id="vval-5min">$0.00</td></tr>
+      <tr><td>15 min</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-15min" style="width:0%"></div></div></td><td id="vval-15min">$0.00</td></tr>
+      <tr><td>1h</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-1h" style="width:0%"></div></div></td><td id="vval-1h">$0.00</td></tr>
+    </table>
+  </div>
+
+  <!-- Stats card -->
+  <div class="panel">
+    <div class="panel-title">&#9641; STATISTIQUES MARCHÉ</div>
+    <div class="health-list" id="stats-list">
+      <div class="health-row"><span class="health-label">Prix moyen 5min</span><span id="stat-avg5" class="health-val">$107,000.00</span></div>
+      <div class="health-row"><span class="health-label">Prix moyen 15min</span><span id="stat-avg15" class="health-val">$107,000.00</span></div>
+      <div class="health-row"><span class="health-label">Prix moyen 1h</span><span id="stat-avg1h" class="health-val">$107,000.00</span></div>
+      <div class="health-row"><span class="health-label">Trades 1min</span><span id="stat-cnt1" class="health-val">0</span></div>
+      <div class="health-row"><span class="health-label">Trades 5min</span><span id="stat-cnt5" class="health-val">0</span></div>
+    </div>
+  </div>
+
+  <!-- Pipeline health -->
+  <div class="panel">
+    <div class="panel-title">&#9723; PIPELINE &mdash; SANTÉ SYSTÈME</div>
+    <div class="health-list">
+      <div class="health-row">
+        <span class="health-label">WebSocket Binance</span>
+        <span class="health-val"><span class="status-dot warn" id="h-binance"></span><span id="h-binance-txt">en attente</span></span>
+      </div>
+      <div class="health-row">
+        <span class="health-label">WebSocket Coinbase</span>
+        <span class="health-val"><span class="status-dot warn" id="h-coinbase"></span><span id="h-coinbase-txt">en attente</span></span>
+      </div>
+      <div class="health-row">
+        <span class="health-label">Kafka broker</span>
+        <span class="health-val"><span class="status-dot warn" id="h-kafka"></span><span id="h-kafka-txt">en attente</span></span>
+      </div>
+      <div class="health-row">
+        <span class="health-label">Socket.IO</span>
+        <span class="health-val"><span class="status-dot warn" id="h-ws"></span><span id="h-ws-txt">en attente</span></span>
+      </div>
+      <div class="health-row">
+        <span class="health-label">Débit ingestion</span>
+        <span class="health-val" id="h-rate">0 msg/s</span>
+      </div>
+      <div class="health-row">
+        <span class="health-label">Total trades reçus</span>
+        <span class="health-val" id="h-total">0</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Footer ──────────────────────────────────────────────────────────── -->
+<footer>
+  <span>Kafka topic: <strong>crypto.trades.raw</strong> · 3 partitions</span>
+  <span id="footer-ts">En attente de données...</span>
+  <span>Node.js · WebSocket · Kafka · MongoDB · Chart.js</span>
+</footer>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+const MAX_CHART_POINTS = 200;
+const CHART_SYMBOL     = 'BTCUSDT';
+
+const state = {
+  prices:      {},  // symbol → last price
+  prevPrices:  {},  // symbol → price at prev reference
+  alertCount:  0,
+  tradeCount:  0,
+  tradesLastSec: 0,
+  tradeSecBuf: [],  // timestamps of trades in last ~2s for rate calc
+  lastStats:   {},  // symbol → { windows: {...} }
+};
+
+// Chart data
+const chartLabels = [];
+const chartPrices = [];
+const chartMovAvg = [];
+const anomalyPoints = [];  // { x: label, y: price }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chart setup
+// ─────────────────────────────────────────────────────────────────────────────
+const ctx = document.getElementById('priceChart').getContext('2d');
+const priceChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: chartLabels,
+    datasets: [
+      {
+        label: 'Prix BTC',
+        data: chartPrices,
+        borderColor: '#58a6ff',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.2,
+        fill: false,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Moy. mobile',
+        data: chartMovAvg,
+        borderColor: '#bc8cff',
+        borderWidth: 1,
+        borderDash: [4, 4],
+        pointRadius: 0,
+        tension: 0.2,
+        fill: false,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Anomalie',
+        data: anomalyPoints,
+        borderColor: '#f85149',
+        backgroundColor: '#f85149',
+        pointRadius: 5,
+        pointStyle: 'circle',
+        showLine: false,
+        yAxisID: 'y',
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    animation: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      x: {
+        ticks: { color: '#8b949e', maxTicksLimit: 8, maxRotation: 0 },
+        grid:  { color: '#21262d' },
+      },
+      y: {
+        position: 'right',
+        ticks: {
+          color: '#8b949e',
+          callback: (v) => '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        },
+        grid: { color: '#21262d' },
+      },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#161b22',
+        borderColor: '#30363d',
+        borderWidth: 1,
+        callbacks: {
+          label: (ctx) => ` $${ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+        },
+      },
+    },
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function fmtPrice(p) {
+  if (p == null) return '$0.00';
+  return '$' + Number(p).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtVol(v) {
+  if (v == null) return '$0.00';
+  if (v >= 1_000_000) return '$' + (v / 1_000_000).toFixed(1) + 'M';
+  if (v >= 1_000)     return '$' + (v / 1_000).toFixed(1)     + 'K';
+  return '$' + v.toFixed(2);
+}
+
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return d.toTimeString().slice(0, 8);
+}
+
+function movingAverage(arr, window) {
+  if (arr.length < window) return arr.reduce((s, v) => s + v, 0) / arr.length;
+  const slice = arr.slice(-window);
+  return slice.reduce((s, v) => s + v, 0) / slice.length;
+}
+
+function setDot(id, cls, txt) {
+  const dot = document.getElementById(id);
+  const lbl = document.getElementById(id + '-txt');
+  if (dot) { dot.className = 'status-dot ' + cls; }
+  if (lbl) lbl.textContent = txt;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trade handler
+// ─────────────────────────────────────────────────────────────────────────────
+function onTrade(trade) {
+  const { symbol, price, volume, timestamp, exchange } = trade;
+  const now = Date.now();
+
+  state.prices[symbol] = price;
+  state.tradeCount++;
+  state.tradeSecBuf.push(now);
+
+  // Mark exchange as alive
+  if (exchange === 'binance')  { setDot('h-binance',  'ok', 'connecté'); }
+  if (exchange === 'coinbase') { setDot('h-coinbase', 'ok', 'connecté'); }
+  setDot('h-kafka', 'ok', 'actif');
+  setDot('h-ws',    'ok', 'connecté');
+
+  // Ticker update
+  const priceEl = document.getElementById('tick-' + symbol);
+  const chgEl   = document.getElementById('tick-' + symbol + '-chg');
+  if (priceEl) {
+    const prev = state.prevPrices[symbol];
+    priceEl.textContent = fmtPrice(price);
+    priceEl.className = 'ticker-price ' + (prev ? (price >= prev ? 'up' : 'down') : '');
+    if (prev) {
+      const pct = ((price - prev) / prev * 100).toFixed(2);
+      chgEl.textContent = (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct) + '%';
+      chgEl.className = 'ticker-change ' + (pct >= 0 ? 'up' : 'down');
+    }
+    state.prevPrices[symbol] = price;
+  }
+
+  // KPI BTC price
+  if (symbol === 'BTCUSDT' || symbol === 'BTCUSD') {
+    document.getElementById('kpi-btc-price').textContent = fmtPrice(price);
+  }
+
+  // Chart update (BTC only)
+  if (symbol === CHART_SYMBOL) {
+    const label = fmtTime(timestamp);
+    if (chartLabels.length >= MAX_CHART_POINTS) {
+      chartLabels.shift();
+      chartPrices.shift();
+      chartMovAvg.shift();
+    }
+    chartLabels.push(label);
+    chartPrices.push(price);
+    chartMovAvg.push(movingAverage(chartPrices, 20));
+    priceChart.update('none');
+  }
+
+  // Trades feed
+  const list = document.getElementById('trade-list');
+  const item = document.createElement('div');
+  item.className = 'trade-item';
+  item.innerHTML = `
+    <span class="trade-price ${(state.prevPrices[symbol] || 0) <= price ? 'up' : 'down'}">${fmtPrice(price)}</span>
+    <span class="trade-vol">${Number(volume).toFixed(4)}</span>
+    <span class="trade-source source-${exchange}">${exchange}</span>
+    <span class="trade-time">${fmtTime(timestamp)}</span>
+  `;
+  list.insertBefore(item, list.firstChild);
+  if (list.children.length > 30) list.removeChild(list.lastChild);
+
+  // Total counter
+  document.getElementById('h-total').textContent = state.tradeCount.toLocaleString();
+  document.getElementById('footer-ts').textContent = 'Dernière maj : ' + fmtTime(now) + ' UTC';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stats handler
+// ─────────────────────────────────────────────────────────────────────────────
+function onStats(data) {
+  const { symbol, windows } = data;
+  state.lastStats[symbol] = data;
+
+  if (symbol === 'BTCUSDT' || symbol === 'BTCUSD') {
+    const w5 = windows['5min'];
+    if (w5) {
+      document.getElementById('kpi-vol-5m').textContent    = fmtVol(w5.avgPrice * w5.cumVolume);
+      document.getElementById('kpi-vol-5m-sub').textContent = `~${w5.tradeCount} trades`;
+    }
+
+    // Stats panel
+    if (windows['5min'])  document.getElementById('stat-avg5').textContent  = fmtPrice(windows['5min'].avgPrice);
+    if (windows['15min']) document.getElementById('stat-avg15').textContent = fmtPrice(windows['15min'].avgPrice);
+    if (windows['1h'])    document.getElementById('stat-avg1h').textContent = fmtPrice(windows['1h'].avgPrice);
+    if (windows['1min'])  document.getElementById('stat-cnt1').textContent  = windows['1min'].tradeCount;
+    if (windows['5min'])  document.getElementById('stat-cnt5').textContent  = windows['5min'].tradeCount;
+
+    // Volume bars — use 1h as baseline (100%)
+    const vol1h = windows['1h']  ? windows['1h'].cumVolume  : 0;
+    const bars  = { '1min': windows['1min'], '5min': windows['5min'], '15min': windows['15min'], '1h': windows['1h'] };
+    for (const [key, w] of Object.entries(bars)) {
+      if (!w) continue;
+      const pct = vol1h > 0 ? Math.min((w.cumVolume / vol1h) * 100, 100) : 0;
+      const barEl = document.getElementById('vbar-' + key);
+      const valEl = document.getElementById('vval-' + key);
+      if (barEl) barEl.style.width = pct + '%';
+      if (valEl) valEl.textContent = fmtVol(w.avgPrice * w.cumVolume);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Alert handler
+// ─────────────────────────────────────────────────────────────────────────────
+function onAlert(alert) {
+  state.alertCount++;
+  document.getElementById('kpi-alerts').textContent = state.alertCount;
+
+  const list = document.getElementById('alert-list');
+  // Remove placeholder
+  const placeholder = list.querySelector('[data-placeholder]');
+  if (placeholder) placeholder.remove();
+
+  const item = document.createElement('div');
+  item.className = 'alert-item';
+  item.innerHTML = `
+    <span class="alert-dot alert-${alert.type}"></span>
+    <div>
+      <div class="alert-text">${alert.message}</div>
+      <div class="alert-meta">${alert.symbol} · ${alert.exchange} · ${fmtTime(alert.timestamp)}</div>
+    </div>
+  `;
+  list.insertBefore(item, list.firstChild);
+  if (list.children.length > 20) list.removeChild(list.lastChild);
+
+  // Mark anomaly on chart if BTC
+  if ((alert.symbol === CHART_SYMBOL || alert.symbol === 'BTCUSD') && chartLabels.length > 0) {
+    anomalyPoints.push({
+      x: chartLabels[chartLabels.length - 1],
+      y: alert.price,
+    });
+    if (anomalyPoints.length > 50) anomalyPoints.shift();
+    priceChart.update('none');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trades-per-second meter
+// ─────────────────────────────────────────────────────────────────────────────
+setInterval(() => {
+  const now = Date.now();
+  // Keep only last 5s
+  const cutoff = now - 5000;
+  while (state.tradeSecBuf.length > 0 && state.tradeSecBuf[0] < cutoff) {
+    state.tradeSecBuf.shift();
+  }
+  const tps = (state.tradeSecBuf.length / 5).toFixed(1);
+  document.getElementById('kpi-tps').textContent = tps;
+  document.getElementById('h-rate').textContent = tps + ' msg/s';
+}, 1000);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Socket.IO connection
+// ─────────────────────────────────────────────────────────────────────────────
+const socket = io();
+
+socket.on('connect', () => {
+  document.getElementById('live-dot').classList.add('live');
+  document.getElementById('live-label').textContent = 'LIVE';
+  document.getElementById('live-label').style.color = 'var(--green)';
+  setDot('h-ws', 'ok', 'connecté');
+  console.log('[Dashboard] Connected to server');
+});
+
+socket.on('disconnect', () => {
+  document.getElementById('live-dot').classList.remove('live');
+  document.getElementById('live-label').textContent = 'Déconnecté';
+  document.getElementById('live-label').style.color = 'var(--red)';
+  setDot('h-ws', 'err', 'déconnecté');
+});
+
+socket.on('trade', onTrade);
+socket.on('stats', onStats);
+socket.on('alert', onAlert);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Load initial data from REST API
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadInitial() {
+  try {
+    const [tradesRes, alertsRes] = await Promise.all([
+      fetch('/api/trades?limit=20'),
+      fetch('/api/alerts?limit=10'),
+    ]);
+    const tradesData = await tradesRes.json();
+    const alertsData = await alertsRes.json();
+
+    if (tradesData.ok && tradesData.data.length > 0) {
+      // Render in reverse so newest ends up on top
+      [...tradesData.data].reverse().forEach(onTrade);
+    }
+    if (alertsData.ok && alertsData.data.length > 0) {
+      document.getElementById('alert-list').innerHTML = '';
+      [...alertsData.data].reverse().forEach(onAlert);
+    }
+
+    // Load initial stats
+    const statsRes = await fetch('/api/stats?symbol=BTCUSDT');
+    const statsData = await statsRes.json();
+    if (statsData.ok && statsData.data.length > 0) {
+      const windows = {};
+      statsData.data.forEach(s => { windows[s.window] = s; });
+      onStats({ symbol: 'BTCUSDT', windows });
+    }
+  } catch (err) {
+    console.warn('[Dashboard] Could not load initial data:', err.message);
+  }
+}
+
+loadInitial();
+</script>
+</body>
+</html>
