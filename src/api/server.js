@@ -20,6 +20,11 @@ app.use(express.static(path.join(__dirname, '../../dashboard')));
 
 app.use('/api', routes);
 
+// Internal endpoints called by consumers (cross-process event bridge)
+app.post('/internal/trade', (req, res) => { eventBus.emit('trade', req.body); res.sendStatus(204); });
+app.post('/internal/stats', (req, res) => { eventBus.emit('stats', req.body); res.sendStatus(204); });
+app.post('/internal/alert', (req, res) => { eventBus.emit('alert', req.body); res.sendStatus(204); });
+
 // ── Socket.IO ────────────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
   console.log(`[API] Dashboard connected: ${socket.id}`);

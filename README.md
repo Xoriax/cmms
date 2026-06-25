@@ -1,14 +1,13 @@
 # Crypto Market Monitor — Real-Time Pipeline
 
 Real-time crypto data pipeline:
-**WebSocket (Binance/Coinbase) → Kafka → 3 Consumers → MongoDB → REST API + Socket.IO → Dashboard**
+**WebSocket (Coinbase) → Kafka → 3 Consumers → MongoDB → REST API + Socket.IO → Dashboard**
 
 ## Architecture
 
 ```
-Binance WS ──┐
-              ├─► Kafka (crypto.trades.raw, 3 partitions)
-Coinbase WS ──┘         │
+Coinbase WS ──► Kafka (crypto.trades.raw, 3 partitions)
+                        │
                 ┌────────┼────────┐
            Consumer1  Consumer2  Consumer3
            Normalizer Aggregator  Anomaly
@@ -73,10 +72,9 @@ node src/consumers/consumer2-aggregator.js
 node src/consumers/consumer3-anomaly.js
 ```
 
-### 7. Start data producers (2 separate terminals)
+### 7. Start the data producer
 
 ```bash
-node src/ingestion/binanceProducer.js
 node src/ingestion/coinbaseProducer.js
 ```
 

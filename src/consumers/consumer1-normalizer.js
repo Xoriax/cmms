@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Kafka } = require('kafkajs');
 const { connect: connectMongo } = require('../db/mongoose');
 const { TradeRaw } = require('../db/models');
-const eventBus = require('../api/eventBus');
+const INTERNAL_URL = `http://localhost:${process.env.API_PORT || 3000}`;
 
 const BROKER   = process.env.KAFKA_BROKER  || 'localhost:9092';
 const TOPIC    = process.env.KAFKA_TOPIC   || 'crypto.trades.raw';
@@ -45,8 +45,12 @@ async function run() {
         // Fire-and-forget MongoDB write
         TradeRaw.create(trade).catch(console.error);
 
-        // Emit to in-memory event bus for API layer
-        eventBus.emit('trade', trade);
+        // Notify API server (cross-process)
+        fetch(`${INTERNAL_URL}/internal/trade`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(trade),
+        }).catch(() => {});
 
         console.log(`[Consumer1] ${trade.exchange} ${trade.symbol} $${trade.price} vol=${trade.volume}`);
       } catch (err) {

@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Kafka } = require('kafkajs');
 const { connect: connectMongo } = require('../db/mongoose');
 const { Alert } = require('../db/models');
-const eventBus = require('../api/eventBus');
+const INTERNAL_URL = `http://localhost:${process.env.API_PORT || 3000}`;
 
 const BROKER   = process.env.KAFKA_BROKER   || 'localhost:9092';
 const TOPIC    = process.env.KAFKA_TOPIC    || 'crypto.trades.raw';
@@ -67,7 +67,11 @@ async function run() {
             timestamp: new Date(ts), exchange,
           };
           Alert.create(alert).catch(console.error);
-          eventBus.emit('alert', alert);
+          fetch(`${INTERNAL_URL}/internal/alert`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(alert),
+          }).catch(() => {});
           console.warn(`[Consumer3] ALERT LARGE_VOLUME ${symbol}: ${alert.message}`);
         }
 
@@ -93,7 +97,11 @@ async function run() {
               timestamp: new Date(ts), exchange,
             };
             Alert.create(alert).catch(console.error);
-            eventBus.emit('alert', alert);
+            fetch(`${INTERNAL_URL}/internal/alert`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(alert),
+          }).catch(() => {});
             console.warn(`[Consumer3] ALERT PRICE_SPIKE ${symbol}: ${alert.message}`);
           }
         }

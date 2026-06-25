@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Kafka } = require('kafkajs');
 const { connect: connectMongo } = require('../db/mongoose');
 const { Aggregate } = require('../db/models');
-const eventBus = require('../api/eventBus');
+const INTERNAL_URL = `http://localhost:${process.env.API_PORT || 3000}`;
 
 const BROKER   = process.env.KAFKA_BROKER   || 'localhost:9092';
 const TOPIC    = process.env.KAFKA_TOPIC    || 'crypto.trades.raw';
@@ -83,7 +83,11 @@ async function run() {
           ).catch(console.error);
         }
 
-        eventBus.emit('stats', statsPayload);
+        fetch(`${INTERNAL_URL}/internal/stats`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(statsPayload),
+        }).catch(() => {});
 
       } catch (err) {
         console.error('[Consumer2] Process error:', err.message);

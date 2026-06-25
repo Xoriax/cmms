@@ -192,6 +192,18 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+  /* ── Symbol toggle buttons ───────────────────────────────────────── */
+  .sym-btn-group { display: flex; gap: 6px; }
+  .sym-btn {
+    padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted);
+    cursor: pointer; font-size: 11px; font-family: inherit;
+    transition: all .15s;
+  }
+  .sym-btn.active {
+    border-color: var(--blue); background: rgba(88,166,255,.15); color: var(--blue);
+  }
+
   /* ── Footer ──────────────────────────────────────────────────────── */
   footer {
     background: var(--surface);
@@ -210,30 +222,19 @@
 <header>
   <span style="font-size:18px">&#128200;</span>
   <h1>Crypto Market Monitor &mdash; Real-Time Pipeline</h1>
-  <span id="binance-badge" style="font-size:11px;padding:2px 8px;border-radius:3px;background:rgba(240,185,11,.15);color:#f0b90b">Binance</span>
-  <span id="coinbase-badge" style="font-size:11px;padding:2px 8px;border-radius:3px;background:rgba(0,82,255,.15);color:#5c8aff">Coinbase</span>
+  <span style="font-size:11px;padding:2px 8px;border-radius:3px;background:rgba(0,82,255,.15);color:#5c8aff">Coinbase</span>
   <span><span class="live-dot" id="live-dot"></span><span id="live-label" style="font-size:11px;color:var(--muted)">Connecting...</span></span>
 </header>
 
 <!-- ── Ticker ──────────────────────────────────────────────────────────── -->
 <div class="ticker">
   <div class="ticker-item">
-    <span class="ticker-label">BTC/USDT</span>
-    <span class="ticker-price" id="tick-BTCUSDT">$107,000.00</span>
-    <span class="ticker-change" id="tick-BTCUSDT-chg">+0.00%</span>
-  </div>
-  <div class="ticker-item">
-    <span class="ticker-label">ETH/USDT</span>
-    <span class="ticker-price" id="tick-ETHUSDT">$2,500.00</span>
-    <span class="ticker-change" id="tick-ETHUSDT-chg">+0.00%</span>
-  </div>
-  <div class="ticker-item">
-    <span class="ticker-label">BTC-USD (Coinbase)</span>
+    <span class="ticker-label">BTC/USD</span>
     <span class="ticker-price" id="tick-BTCUSD">$107,000.00</span>
     <span class="ticker-change" id="tick-BTCUSD-chg">+0.00%</span>
   </div>
   <div class="ticker-item">
-    <span class="ticker-label">ETH-USD (Coinbase)</span>
+    <span class="ticker-label">ETH/USD</span>
     <span class="ticker-price" id="tick-ETHUSD">$2,500.00</span>
     <span class="ticker-change" id="tick-ETHUSD-chg">+0.00%</span>
   </div>
@@ -242,7 +243,7 @@
 <!-- ── KPI Cards ───────────────────────────────────────────────────────── -->
 <div class="kpi-row">
   <div class="kpi">
-    <div class="kpi-label">BTC/USDT — Prix actuel</div>
+    <div class="kpi-label" id="kpi-active-label">BTC/USD — Prix actuel</div>
     <div class="kpi-value" id="kpi-btc-price">$107,000.00</div>
     <div class="kpi-sub" id="kpi-btc-chg">+0.00% vs 1h</div>
   </div>
@@ -254,7 +255,7 @@
   <div class="kpi">
     <div class="kpi-label">Trades / seconde</div>
     <div class="kpi-value" id="kpi-tps">0.0</div>
-    <div class="kpi-sub">Binance + Coinbase</div>
+    <div class="kpi-sub">Coinbase</div>
   </div>
   <div class="kpi">
     <div class="kpi-label">Anomalies détectées</div>
@@ -268,9 +269,12 @@
 
   <!-- Chart -->
   <div class="chart-panel">
-    <div class="panel-title">
-      &#9650; PRIX BTC/USDT &mdash; FENÊTRE GLISSANTE 30 MIN
-      <span id="chart-moy-label">Moy. mobile ×2</span>
+    <div class="panel-title" style="justify-content:space-between">
+      <span>&#9650; PRIX <span id="chart-symbol-label">BTC</span>/USD &mdash; FENÊTRE GLISSANTE 30 MIN</span>
+      <div class="sym-btn-group">
+        <button type="button" id="btn-btc" class="sym-btn active" onclick="switchSymbol('BTCUSD')">BTC</button>
+        <button type="button" id="btn-eth" class="sym-btn" onclick="switchSymbol('ETHUSD')">ETH</button>
+      </div>
     </div>
     <canvas id="priceChart" height="200"></canvas>
     <div style="margin-top:10px;font-size:11px;color:var(--muted);display:flex;gap:20px">
@@ -305,7 +309,7 @@
 
   <!-- Volume per window -->
   <div class="panel">
-    <div class="panel-title">&#9641; VOLUME PAR FENÊTRE (BTC)</div>
+    <div class="panel-title">&#9641; VOLUME PAR FENÊTRE (<span id="vol-symbol-label">BTC</span>)</div>
     <table class="vol-table" id="vol-table">
       <tr><td>1 min</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-1min" style="width:0%"></div></div></td><td id="vval-1min">$0.00</td></tr>
       <tr><td>5 min</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-5min" style="width:0%"></div></div></td><td id="vval-5min">$0.00</td></tr>
@@ -330,10 +334,6 @@
   <div class="panel">
     <div class="panel-title">&#9723; PIPELINE &mdash; SANTÉ SYSTÈME</div>
     <div class="health-list">
-      <div class="health-row">
-        <span class="health-label">WebSocket Binance</span>
-        <span class="health-val"><span class="status-dot warn" id="h-binance"></span><span id="h-binance-txt">en attente</span></span>
-      </div>
       <div class="health-row">
         <span class="health-label">WebSocket Coinbase</span>
         <span class="health-val"><span class="status-dot warn" id="h-coinbase"></span><span id="h-coinbase-txt">en attente</span></span>
@@ -367,105 +367,100 @@
 </footer>
 
 <script>
-// ─────────────────────────────────────────────────────────────────────────────
-// State
-// ─────────────────────────────────────────────────────────────────────────────
 const MAX_CHART_POINTS = 200;
-const CHART_SYMBOL     = 'BTCUSDT';
 
-const state = {
-  prices:      {},  // symbol → last price
-  prevPrices:  {},  // symbol → price at prev reference
-  alertCount:  0,
-  tradeCount:  0,
-  tradesLastSec: 0,
-  tradeSecBuf: [],  // timestamps of trades in last ~2s for rate calc
-  lastStats:   {},  // symbol → { windows: {...} }
+// Per-symbol chart buffers
+const chartData = {
+  BTCUSD: { labels: [], prices: [], movAvg: [], anomalies: [] },
+  ETHUSD: { labels: [], prices: [], movAvg: [], anomalies: [] },
 };
 
-// Chart data
-const chartLabels = [];
-const chartPrices = [];
-const chartMovAvg = [];
-const anomalyPoints = [];  // { x: label, y: price }
+let chartSymbol = 'BTCUSD';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Chart setup
-// ─────────────────────────────────────────────────────────────────────────────
+const state = {
+  prices:     {},
+  prevPrices: {},
+  alertCount: 0,
+  tradeCount: 0,
+  tradeSecBuf: [],
+  lastStats:  {},
+};
+
+// ── Chart setup ───────────────────────────────────────────────────────────────
 const ctx = document.getElementById('priceChart').getContext('2d');
 const priceChart = new Chart(ctx, {
   type: 'line',
   data: {
-    labels: chartLabels,
+    labels:   chartData.BTCUSD.labels,
     datasets: [
       {
-        label: 'Prix BTC',
-        data: chartPrices,
-        borderColor: '#58a6ff',
-        borderWidth: 1.5,
-        pointRadius: 0,
-        tension: 0.2,
-        fill: false,
-        yAxisID: 'y',
+        label: 'Prix',
+        data:        chartData.BTCUSD.prices,
+        borderColor: '#58a6ff', borderWidth: 1.5,
+        pointRadius: 0, tension: 0.2, fill: false, yAxisID: 'y',
       },
       {
         label: 'Moy. mobile',
-        data: chartMovAvg,
-        borderColor: '#bc8cff',
-        borderWidth: 1,
-        borderDash: [4, 4],
-        pointRadius: 0,
-        tension: 0.2,
-        fill: false,
-        yAxisID: 'y',
+        data:        chartData.BTCUSD.movAvg,
+        borderColor: '#bc8cff', borderWidth: 1,
+        borderDash: [4, 4], pointRadius: 0, tension: 0.2, fill: false, yAxisID: 'y',
       },
       {
         label: 'Anomalie',
-        data: anomalyPoints,
-        borderColor: '#f85149',
-        backgroundColor: '#f85149',
-        pointRadius: 5,
-        pointStyle: 'circle',
-        showLine: false,
-        yAxisID: 'y',
+        data:            chartData.BTCUSD.anomalies,
+        borderColor:     '#f85149', backgroundColor: '#f85149',
+        pointRadius: 5,  pointStyle: 'circle', showLine: false, yAxisID: 'y',
       },
     ],
   },
   options: {
-    responsive: true,
-    animation: false,
+    responsive: true, animation: false,
     interaction: { mode: 'index', intersect: false },
     scales: {
-      x: {
-        ticks: { color: '#8b949e', maxTicksLimit: 8, maxRotation: 0 },
-        grid:  { color: '#21262d' },
-      },
+      x: { ticks: { color: '#8b949e', maxTicksLimit: 8, maxRotation: 0 }, grid: { color: '#21262d' } },
       y: {
         position: 'right',
-        ticks: {
-          color: '#8b949e',
-          callback: (v) => '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 }),
-        },
+        ticks: { color: '#8b949e', callback: (v) => '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 }) },
         grid: { color: '#21262d' },
       },
     },
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#161b22',
-        borderColor: '#30363d',
-        borderWidth: 1,
-        callbacks: {
-          label: (ctx) => ` $${ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-        },
+        backgroundColor: '#161b22', borderColor: '#30363d', borderWidth: 1,
+        callbacks: { label: (c) => ` $${c.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 })}` },
       },
     },
   },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Symbol switch ─────────────────────────────────────────────────────────────
+function switchSymbol(sym) {
+  if (sym === chartSymbol) return;
+  chartSymbol = sym;
+
+  const d = chartData[sym];
+  priceChart.data.labels         = d.labels;
+  priceChart.data.datasets[0].data = d.prices;
+  priceChart.data.datasets[1].data = d.movAvg;
+  priceChart.data.datasets[2].data = d.anomalies;
+  priceChart.update('none');
+
+  const label = sym === 'BTCUSD' ? 'BTC' : 'ETH';
+  document.getElementById('chart-symbol-label').textContent = label;
+  document.getElementById('vol-symbol-label').textContent   = label;
+  document.getElementById('kpi-active-label').textContent   = `${label}/USD — Prix actuel`;
+
+  document.getElementById('btn-btc').classList.toggle('active', sym === 'BTCUSD');
+  document.getElementById('btn-eth').classList.toggle('active', sym === 'ETHUSD');
+
+  // Refresh KPIs with cached stats for this symbol
+  if (state.lastStats[sym]) refreshStats(sym, state.lastStats[sym].windows);
+  const p = state.prices[sym];
+  if (p != null) document.getElementById('kpi-btc-price').textContent = fmtPrice(p);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtPrice(p) {
   if (p == null) return '$0.00';
   return '$' + Number(p).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -478,27 +473,22 @@ function fmtVol(v) {
   return '$' + v.toFixed(2);
 }
 
-function fmtTime(ts) {
-  const d = new Date(ts);
-  return d.toTimeString().slice(0, 8);
-}
+function fmtTime(ts) { return new Date(ts).toTimeString().slice(0, 8); }
 
-function movingAverage(arr, window) {
-  if (arr.length < window) return arr.reduce((s, v) => s + v, 0) / arr.length;
-  const slice = arr.slice(-window);
+function movingAverage(arr, w) {
+  if (arr.length < w) return arr.reduce((s, v) => s + v, 0) / arr.length;
+  const slice = arr.slice(-w);
   return slice.reduce((s, v) => s + v, 0) / slice.length;
 }
 
 function setDot(id, cls, txt) {
   const dot = document.getElementById(id);
   const lbl = document.getElementById(id + '-txt');
-  if (dot) { dot.className = 'status-dot ' + cls; }
+  if (dot) dot.className = 'status-dot ' + cls;
   if (lbl) lbl.textContent = txt;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Trade handler
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Trade handler ─────────────────────────────────────────────────────────────
 function onTrade(trade) {
   const { symbol, price, volume, timestamp, exchange } = trade;
   const now = Date.now();
@@ -507,47 +497,44 @@ function onTrade(trade) {
   state.tradeCount++;
   state.tradeSecBuf.push(now);
 
-  // Mark exchange as alive
-  if (exchange === 'binance')  { setDot('h-binance',  'ok', 'connecté'); }
-  if (exchange === 'coinbase') { setDot('h-coinbase', 'ok', 'connecté'); }
+  if (exchange === 'coinbase') setDot('h-coinbase', 'ok', 'connecté');
   setDot('h-kafka', 'ok', 'actif');
   setDot('h-ws',    'ok', 'connecté');
 
-  // Ticker update
+  // Ticker
   const priceEl = document.getElementById('tick-' + symbol);
   const chgEl   = document.getElementById('tick-' + symbol + '-chg');
   if (priceEl) {
     const prev = state.prevPrices[symbol];
     priceEl.textContent = fmtPrice(price);
-    priceEl.className = 'ticker-price ' + (prev ? (price >= prev ? 'up' : 'down') : '');
+    priceEl.className   = 'ticker-price ' + (prev ? (price >= prev ? 'up' : 'down') : '');
     if (prev) {
       const pct = ((price - prev) / prev * 100).toFixed(2);
       chgEl.textContent = (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct) + '%';
-      chgEl.className = 'ticker-change ' + (pct >= 0 ? 'up' : 'down');
+      chgEl.className   = 'ticker-change ' + (pct >= 0 ? 'up' : 'down');
     }
     state.prevPrices[symbol] = price;
   }
 
-  // KPI BTC price
-  if (symbol === 'BTCUSDT' || symbol === 'BTCUSD') {
+  // KPI prix du symbole actif
+  if (symbol === chartSymbol) {
     document.getElementById('kpi-btc-price').textContent = fmtPrice(price);
   }
 
-  // Chart update (BTC only)
-  if (symbol === CHART_SYMBOL) {
-    const label = fmtTime(timestamp);
-    if (chartLabels.length >= MAX_CHART_POINTS) {
-      chartLabels.shift();
-      chartPrices.shift();
-      chartMovAvg.shift();
+  // Chart — accumulate data for every symbol, render only the active one
+  const d = chartData[symbol];
+  if (d) {
+    if (d.labels.length >= MAX_CHART_POINTS) {
+      d.labels.shift(); d.prices.shift(); d.movAvg.shift();
     }
-    chartLabels.push(label);
-    chartPrices.push(price);
-    chartMovAvg.push(movingAverage(chartPrices, 20));
-    priceChart.update('none');
+    d.labels.push(fmtTime(timestamp));
+    d.prices.push(price);
+    d.movAvg.push(movingAverage(d.prices, 20));
+
+    if (symbol === chartSymbol) priceChart.update('none');
   }
 
-  // Trades feed
+  // Trades feed (all symbols)
   const list = document.getElementById('trade-list');
   const item = document.createElement('div');
   item.className = 'trade-item';
@@ -560,55 +547,46 @@ function onTrade(trade) {
   list.insertBefore(item, list.firstChild);
   if (list.children.length > 30) list.removeChild(list.lastChild);
 
-  // Total counter
-  document.getElementById('h-total').textContent = state.tradeCount.toLocaleString();
+  document.getElementById('h-total').textContent  = state.tradeCount.toLocaleString();
   document.getElementById('footer-ts').textContent = 'Dernière maj : ' + fmtTime(now) + ' UTC';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Stats handler
-// ─────────────────────────────────────────────────────────────────────────────
-function onStats(data) {
-  const { symbol, windows } = data;
-  state.lastStats[symbol] = data;
+// ── Stats handler ─────────────────────────────────────────────────────────────
+function refreshStats(symbol, windows) {
+  const w5 = windows['5min'];
+  if (w5) {
+    document.getElementById('kpi-vol-5m').textContent     = fmtVol(w5.avgPrice * w5.cumVolume);
+    document.getElementById('kpi-vol-5m-sub').textContent = `~${w5.tradeCount} trades`;
+  }
+  if (windows['5min'])  document.getElementById('stat-avg5').textContent  = fmtPrice(windows['5min'].avgPrice);
+  if (windows['15min']) document.getElementById('stat-avg15').textContent = fmtPrice(windows['15min'].avgPrice);
+  if (windows['1h'])    document.getElementById('stat-avg1h').textContent = fmtPrice(windows['1h'].avgPrice);
+  if (windows['1min'])  document.getElementById('stat-cnt1').textContent  = windows['1min'].tradeCount;
+  if (windows['5min'])  document.getElementById('stat-cnt5').textContent  = windows['5min'].tradeCount;
 
-  if (symbol === 'BTCUSDT' || symbol === 'BTCUSD') {
-    const w5 = windows['5min'];
-    if (w5) {
-      document.getElementById('kpi-vol-5m').textContent    = fmtVol(w5.avgPrice * w5.cumVolume);
-      document.getElementById('kpi-vol-5m-sub').textContent = `~${w5.tradeCount} trades`;
-    }
-
-    // Stats panel
-    if (windows['5min'])  document.getElementById('stat-avg5').textContent  = fmtPrice(windows['5min'].avgPrice);
-    if (windows['15min']) document.getElementById('stat-avg15').textContent = fmtPrice(windows['15min'].avgPrice);
-    if (windows['1h'])    document.getElementById('stat-avg1h').textContent = fmtPrice(windows['1h'].avgPrice);
-    if (windows['1min'])  document.getElementById('stat-cnt1').textContent  = windows['1min'].tradeCount;
-    if (windows['5min'])  document.getElementById('stat-cnt5').textContent  = windows['5min'].tradeCount;
-
-    // Volume bars — use 1h as baseline (100%)
-    const vol1h = windows['1h']  ? windows['1h'].cumVolume  : 0;
-    const bars  = { '1min': windows['1min'], '5min': windows['5min'], '15min': windows['15min'], '1h': windows['1h'] };
-    for (const [key, w] of Object.entries(bars)) {
-      if (!w) continue;
-      const pct = vol1h > 0 ? Math.min((w.cumVolume / vol1h) * 100, 100) : 0;
-      const barEl = document.getElementById('vbar-' + key);
-      const valEl = document.getElementById('vval-' + key);
-      if (barEl) barEl.style.width = pct + '%';
-      if (valEl) valEl.textContent = fmtVol(w.avgPrice * w.cumVolume);
-    }
+  const vol1h = windows['1h'] ? windows['1h'].cumVolume : 0;
+  for (const [key, w] of Object.entries({ '1min': windows['1min'], '5min': windows['5min'], '15min': windows['15min'], '1h': windows['1h'] })) {
+    if (!w) continue;
+    const pct = vol1h > 0 ? Math.min((w.cumVolume / vol1h) * 100, 100) : 0;
+    const barEl = document.getElementById('vbar-' + key);
+    const valEl = document.getElementById('vval-' + key);
+    if (barEl) barEl.style.width = pct + '%';
+    if (valEl) valEl.textContent = fmtVol(w.avgPrice * w.cumVolume);
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Alert handler
-// ─────────────────────────────────────────────────────────────────────────────
+function onStats(data) {
+  const { symbol, windows } = data;
+  state.lastStats[symbol] = data;
+  if (symbol === chartSymbol) refreshStats(symbol, windows);
+}
+
+// ── Alert handler ─────────────────────────────────────────────────────────────
 function onAlert(alert) {
   state.alertCount++;
   document.getElementById('kpi-alerts').textContent = state.alertCount;
 
   const list = document.getElementById('alert-list');
-  // Remove placeholder
   const placeholder = list.querySelector('[data-placeholder]');
   if (placeholder) placeholder.remove();
 
@@ -624,43 +602,31 @@ function onAlert(alert) {
   list.insertBefore(item, list.firstChild);
   if (list.children.length > 20) list.removeChild(list.lastChild);
 
-  // Mark anomaly on chart if BTC
-  if ((alert.symbol === CHART_SYMBOL || alert.symbol === 'BTCUSD') && chartLabels.length > 0) {
-    anomalyPoints.push({
-      x: chartLabels[chartLabels.length - 1],
-      y: alert.price,
-    });
-    if (anomalyPoints.length > 50) anomalyPoints.shift();
+  const d = chartData[alert.symbol];
+  if (d && alert.symbol === chartSymbol && d.labels.length > 0) {
+    d.anomalies.push({ x: d.labels[d.labels.length - 1], y: alert.price });
+    if (d.anomalies.length > 50) d.anomalies.shift();
     priceChart.update('none');
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Trades-per-second meter
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Trades-per-second meter ───────────────────────────────────────────────────
 setInterval(() => {
-  const now = Date.now();
-  // Keep only last 5s
-  const cutoff = now - 5000;
-  while (state.tradeSecBuf.length > 0 && state.tradeSecBuf[0] < cutoff) {
-    state.tradeSecBuf.shift();
-  }
+  const cutoff = Date.now() - 5000;
+  while (state.tradeSecBuf.length > 0 && state.tradeSecBuf[0] < cutoff) state.tradeSecBuf.shift();
   const tps = (state.tradeSecBuf.length / 5).toFixed(1);
   document.getElementById('kpi-tps').textContent = tps;
-  document.getElementById('h-rate').textContent = tps + ' msg/s';
+  document.getElementById('h-rate').textContent  = tps + ' msg/s';
 }, 1000);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Socket.IO connection
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Socket.IO ─────────────────────────────────────────────────────────────────
 const socket = io();
 
 socket.on('connect', () => {
   document.getElementById('live-dot').classList.add('live');
-  document.getElementById('live-label').textContent = 'LIVE';
-  document.getElementById('live-label').style.color = 'var(--green)';
+  document.getElementById('live-label').textContent  = 'LIVE';
+  document.getElementById('live-label').style.color  = 'var(--green)';
   setDot('h-ws', 'ok', 'connecté');
-  console.log('[Dashboard] Connected to server');
 });
 
 socket.on('disconnect', () => {
@@ -674,9 +640,7 @@ socket.on('trade', onTrade);
 socket.on('stats', onStats);
 socket.on('alert', onAlert);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Load initial data from REST API
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Initial data load ─────────────────────────────────────────────────────────
 async function loadInitial() {
   try {
     const [tradesRes, alertsRes] = await Promise.all([
@@ -687,7 +651,6 @@ async function loadInitial() {
     const alertsData = await alertsRes.json();
 
     if (tradesData.ok && tradesData.data.length > 0) {
-      // Render in reverse so newest ends up on top
       [...tradesData.data].reverse().forEach(onTrade);
     }
     if (alertsData.ok && alertsData.data.length > 0) {
@@ -695,13 +658,12 @@ async function loadInitial() {
       [...alertsData.data].reverse().forEach(onAlert);
     }
 
-    // Load initial stats
-    const statsRes = await fetch('/api/stats?symbol=BTCUSDT');
+    const statsRes  = await fetch('/api/stats?symbol=BTCUSD');
     const statsData = await statsRes.json();
     if (statsData.ok && statsData.data.length > 0) {
       const windows = {};
       statsData.data.forEach(s => { windows[s.window] = s; });
-      onStats({ symbol: 'BTCUSDT', windows });
+      onStats({ symbol: 'BTCUSD', windows });
     }
   } catch (err) {
     console.warn('[Dashboard] Could not load initial data:', err.message);
