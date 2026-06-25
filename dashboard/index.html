@@ -75,7 +75,7 @@
   /* ── Main grid ───────────────────────────────────────────────────── */
   .main {
     display: grid;
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 2fr 1fr;
     grid-template-rows: auto auto;
     gap: 1px;
     background: var(--border);
@@ -89,7 +89,7 @@
   /* ── KPI cards ───────────────────────────────────────────────────── */
   .kpi-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 1px;
     background: var(--border);
     border-bottom: 1px solid var(--border);
@@ -115,7 +115,7 @@
     display: flex; align-items: center; gap: 8px;
   }
   .panel-title span { color: var(--text); }
-  canvas { width: 100% !important; }
+  canvas { width: 100% !important; height: 380px !important; }
 
   /* ── Right column ────────────────────────────────────────────────── */
   .right-col {
@@ -129,26 +129,36 @@
 
   /* ── Trades feed ─────────────────────────────────────────────────── */
   .trades-panel { background: var(--surface); padding: 14px; flex: 1; overflow: hidden; }
-  .trade-list { max-height: 220px; overflow-y: auto; }
-  .trade-item {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 5px 0; border-bottom: 1px solid var(--border);
-    font-size: 12px; gap: 8px;
-  }
+  .trade-list { max-height: 340px; overflow-y: auto; }
+  .trade-item { padding: 7px 0; border-bottom: 1px solid var(--border); }
   .trade-item:last-child { border-bottom: none; }
-  .trade-price { font-weight: 700; min-width: 80px; }
-  .trade-vol   { color: var(--muted); font-size: 11px; }
+  .trade-row1 { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .trade-row2 { font-size: 10px; color: var(--muted); padding-left: 2px; }
+  .trade-symbol-badge {
+    font-size: 10px; padding: 1px 5px; border-radius: 3px;
+    background: var(--border); color: var(--text);
+    font-weight: 600; letter-spacing: .3px; flex-shrink: 0;
+  }
+  .trade-side {
+    font-size: 10px; padding: 1px 6px; border-radius: 3px;
+    font-weight: 700; flex-shrink: 0;
+  }
+  .side-buy  { background: rgba(63,185,80,.15);  color: var(--green); }
+  .side-sell { background: rgba(248,81,73,.15);  color: var(--red); }
+  .side-unknown { background: var(--border); color: var(--muted); }
+  .trade-price { font-weight: 700; font-size: 13px; flex: 1; }
+  .trade-chg   { font-size: 10px; }
+  .trade-time  { color: var(--muted); font-size: 10px; margin-left: auto; flex-shrink: 0; }
   .trade-source {
     font-size: 10px; padding: 1px 5px; border-radius: 3px;
-    text-transform: uppercase; letter-spacing: .3px;
+    text-transform: uppercase; letter-spacing: .3px; flex-shrink: 0;
   }
-  .source-binance  { background: rgba(240,185,11,.15); color: var(--binance); }
-  .source-coinbase { background: rgba(0,82,255,.15);   color: #5c8aff; }
-  .trade-time { color: var(--muted); font-size: 10px; min-width: 55px; text-align: right; }
+  .source-coinbase { background: rgba(0,82,255,.15); color: #5c8aff; }
+  .trade-detail strong { color: var(--text); }
 
   /* ── Alerts panel ────────────────────────────────────────────────── */
-  .alerts-panel { background: var(--surface); padding: 14px; }
-  .alert-list { max-height: 200px; overflow-y: auto; }
+  .alerts-panel { background: var(--surface); padding: 14px; flex-shrink: 0; }
+  .alert-list { max-height: 180px; overflow-y: auto; }
   .alert-item {
     display: flex; align-items: flex-start; gap: 8px;
     padding: 6px 0; border-bottom: 1px solid var(--border);
@@ -170,12 +180,15 @@
     border-top: 1px solid var(--border);
   }
 
-  /* ── Volume bar chart ────────────────────────────────────────────── */
+  /* ── Volume glissant ──────────────────────────────────────────────── */
   .vol-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
   .vol-table td { padding: 4px 0; font-size: 12px; }
   .vol-table td:last-child { text-align: right; color: var(--blue); font-weight: 600; }
   .vol-bar-wrap { background: var(--border); border-radius: 2px; height: 6px; margin: 2px 0; overflow: hidden; }
-  .vol-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width .5s; }
+  .vol-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width .5s; width: 0; }
+  .vol-td-bar { width: 55%; }
+
+  /* ── Volume bar chart ────────────────────────────────────────────── */
 
   /* ── Health panel ────────────────────────────────────────────────── */
   .health-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
@@ -192,17 +205,24 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  /* ── Symbol toggle buttons ───────────────────────────────────────── */
-  .sym-btn-group { display: flex; gap: 6px; }
+  /* ── Symbol & range toggle buttons ──────────────────────────────── */
+  .sym-btn-group { display: flex; gap: 6px; align-items: center; }
   .sym-btn {
     padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border);
     background: transparent; color: var(--muted);
     cursor: pointer; font-size: 11px; font-family: inherit;
     transition: all .15s;
   }
-  .sym-btn.active {
-    border-color: var(--blue); background: rgba(88,166,255,.15); color: var(--blue);
+  .sym-btn.active      { border-color: var(--blue);  background: rgba(88,166,255,.15); color: var(--blue); }
+  .sym-btn.active-live { border-color: var(--green); background: rgba(63,185,80,.12);  color: var(--green); }
+  .btn-sep { width: 1px; height: 14px; background: var(--border); }
+  .chart-panel-title {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .6px; color: var(--muted); margin-bottom: 12px;
   }
+  .chart-panel-title span { color: var(--text); }
+  .chart-controls { display: flex; align-items: center; gap: 8px; }
 
   /* ── Footer ──────────────────────────────────────────────────────── */
   footer {
@@ -248,11 +268,6 @@
     <div class="kpi-sub" id="kpi-btc-chg">+0.00% vs 1h</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Vol glissant 5 min</div>
-    <div class="kpi-value" id="kpi-vol-5m">$0.00</div>
-    <div class="kpi-sub" id="kpi-vol-5m-sub">0 trades</div>
-  </div>
-  <div class="kpi">
     <div class="kpi-label">Trades / seconde</div>
     <div class="kpi-value" id="kpi-tps">0.0</div>
     <div class="kpi-sub">Coinbase</div>
@@ -269,15 +284,25 @@
 
   <!-- Chart -->
   <div class="chart-panel">
-    <div class="panel-title" style="justify-content:space-between">
-      <span>&#9650; PRIX <span id="chart-symbol-label">BTC</span>/USD &mdash; FENÊTRE GLISSANTE 30 MIN</span>
-      <div class="sym-btn-group">
-        <button type="button" id="btn-btc" class="sym-btn active" onclick="switchSymbol('BTCUSD')">BTC</button>
-        <button type="button" id="btn-eth" class="sym-btn" onclick="switchSymbol('ETHUSD')">ETH</button>
+    <div class="chart-panel-title">
+      <span>&#9650; PRIX <span id="chart-symbol-label">BTC</span>/USD &mdash; <span id="chart-range-label">LIVE</span></span>
+      <div class="chart-controls">
+        <div class="sym-btn-group">
+          <button type="button" id="btn-btc" class="sym-btn active" onclick="switchSymbol('BTCUSD')">BTC</button>
+          <button type="button" id="btn-eth" class="sym-btn" onclick="switchSymbol('ETHUSD')">ETH</button>
+        </div>
+        <div class="btn-sep"></div>
+        <div class="sym-btn-group">
+          <button type="button" id="btn-range-LIVE" class="sym-btn active-live" onclick="switchRange('LIVE')">LIVE</button>
+          <button type="button" id="btn-range-1D"   class="sym-btn" onclick="switchRange('1D')">1J</button>
+          <button type="button" id="btn-range-1W"   class="sym-btn" onclick="switchRange('1W')">1S</button>
+          <button type="button" id="btn-range-1M"   class="sym-btn" onclick="switchRange('1M')">1M</button>
+          <button type="button" id="btn-range-1Y"   class="sym-btn" onclick="switchRange('1Y')">1A</button>
+        </div>
       </div>
     </div>
     <canvas id="priceChart" height="200"></canvas>
-    <div style="margin-top:10px;font-size:11px;color:var(--muted);display:flex;gap:20px">
+    <div style="margin-top:5px;font-size:10px;color:var(--muted);display:flex;gap:16px">
       <span><span style="display:inline-block;width:12px;height:2px;background:#58a6ff;vertical-align:middle;margin-right:4px"></span>Prix BTC</span>
       <span><span style="display:inline-block;width:12px;height:2px;background:#bc8cff;vertical-align:middle;margin-right:4px"></span>Moy. mobile</span>
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f85149;vertical-align:middle;margin-right:4px"></span>Trade anormal</span>
@@ -289,7 +314,14 @@
 
     <!-- Trades feed -->
     <div class="trades-panel">
-      <div class="panel-title">&#9889; TRADES RÉCENTS <span style="margin-left:auto;font-size:10px;color:var(--green)">live feed</span></div>
+      <div class="panel-title">
+        &#9889; TRADES RÉCENTS
+        <div class="sym-btn-group" style="margin-left:auto">
+          <button type="button" id="tf-all" class="sym-btn active" onclick="setTradeFilter('ALL')">ALL</button>
+          <button type="button" id="tf-btc" class="sym-btn" onclick="setTradeFilter('BTC')">BTC</button>
+          <button type="button" id="tf-eth" class="sym-btn" onclick="setTradeFilter('ETH')">ETH</button>
+        </div>
+      </div>
       <div class="trade-list" id="trade-list"></div>
     </div>
 
@@ -307,14 +339,14 @@
 <!-- ── Bottom row ──────────────────────────────────────────────────────── -->
 <div class="bottom-row">
 
-  <!-- Volume per window -->
+  <!-- Volume glissant -->
   <div class="panel">
-    <div class="panel-title">&#9641; VOLUME PAR FENÊTRE (<span id="vol-symbol-label">BTC</span>)</div>
-    <table class="vol-table" id="vol-table">
-      <tr><td>1 min</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-1min" style="width:0%"></div></div></td><td id="vval-1min">$0.00</td></tr>
-      <tr><td>5 min</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-5min" style="width:0%"></div></div></td><td id="vval-5min">$0.00</td></tr>
-      <tr><td>15 min</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-15min" style="width:0%"></div></div></td><td id="vval-15min">$0.00</td></tr>
-      <tr><td>1h</td><td colspan="2"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-1h" style="width:0%"></div></div></td><td id="vval-1h">$0.00</td></tr>
+    <div class="panel-title">&#9641; VOLUME GLISSANT (<span id="vol-symbol-label">BTC</span>)</div>
+    <table class="vol-table">
+      <tr><td>1 min</td><td class="vol-td-bar"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-1min"></div></div></td><td id="vval-1min">$0.00</td></tr>
+      <tr><td>5 min</td><td class="vol-td-bar"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-5min"></div></div></td><td id="vval-5min">$0.00</td></tr>
+      <tr><td>15 min</td><td class="vol-td-bar"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-15min"></div></div></td><td id="vval-15min">$0.00</td></tr>
+      <tr><td>1h</td><td class="vol-td-bar"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-1h"></div></div></td><td id="vval-1h">$0.00</td></tr>
     </table>
   </div>
 
@@ -322,9 +354,9 @@
   <div class="panel">
     <div class="panel-title">&#9641; STATISTIQUES MARCHÉ</div>
     <div class="health-list" id="stats-list">
-      <div class="health-row"><span class="health-label">Prix moyen 5min</span><span id="stat-avg5" class="health-val">$107,000.00</span></div>
-      <div class="health-row"><span class="health-label">Prix moyen 15min</span><span id="stat-avg15" class="health-val">$107,000.00</span></div>
-      <div class="health-row"><span class="health-label">Prix moyen 1h</span><span id="stat-avg1h" class="health-val">$107,000.00</span></div>
+      <div class="health-row"><span class="health-label">Prix moyen 1min</span><span id="stat-avg5" class="health-val">—</span></div>
+      <div class="health-row"><span class="health-label">Prix moyen 7j</span><span id="stat-avg15" class="health-val">—</span></div>
+      <div class="health-row"><span class="health-label">Prix moyen 31j</span><span id="stat-avg1h" class="health-val">—</span></div>
       <div class="health-row"><span class="health-label">Trades 1min</span><span id="stat-cnt1" class="health-val">0</span></div>
       <div class="health-row"><span class="health-label">Trades 5min</span><span id="stat-cnt5" class="health-val">0</span></div>
     </div>
@@ -369,13 +401,19 @@
 <script>
 const MAX_CHART_POINTS = 200;
 
-// Per-symbol chart buffers
+// Per-symbol live chart buffers (Socket.IO streaming data)
 const chartData = {
   BTCUSD: { labels: [], prices: [], movAvg: [], anomalies: [] },
   ETHUSD: { labels: [], prices: [], movAvg: [], anomalies: [] },
 };
 
-let chartSymbol = 'BTCUSD';
+let chartSymbol  = 'BTCUSD';
+let chartRange   = 'LIVE';
+let tradeFilter  = 'ALL';
+let allTrades    = [];   // buffer de tous les trades pour le re-filtrage
+let ohlcRefreshTimer = null;
+
+const RANGE_LABELS = { LIVE: 'LIVE', '1D': '1 JOUR', '1W': '1 SEMAINE', '1M': '1 MOIS', '1Y': '1 AN' };
 
 const state = {
   prices:     {},
@@ -414,7 +452,7 @@ const priceChart = new Chart(ctx, {
     ],
   },
   options: {
-    responsive: true, animation: false,
+    responsive: true, maintainAspectRatio: false, animation: false,
     interaction: { mode: 'index', intersect: false },
     scales: {
       x: { ticks: { color: '#8b949e', maxTicksLimit: 8, maxRotation: 0 }, grid: { color: '#21262d' } },
@@ -454,10 +492,84 @@ function switchSymbol(sym) {
   document.getElementById('btn-btc').classList.toggle('active', sym === 'BTCUSD');
   document.getElementById('btn-eth').classList.toggle('active', sym === 'ETHUSD');
 
-  // Refresh KPIs with cached stats for this symbol
+  if (chartRange === 'LIVE') {
+    // Point chart to this symbol's live buffer
+    const d = chartData[sym];
+    priceChart.data.labels           = d.labels;
+    priceChart.data.datasets[0].data = d.prices;
+    priceChart.data.datasets[1].data = d.movAvg;
+    priceChart.data.datasets[2].data = d.anomalies;
+    priceChart.update('none');
+  } else {
+    loadOhlc();
+  }
+
   if (state.lastStats[sym]) refreshStats(sym, state.lastStats[sym].windows);
   const p = state.prices[sym];
   if (p != null) document.getElementById('kpi-btc-price').textContent = fmtPrice(p);
+
+  // Reload long-term averages for the new symbol
+  clearInterval(longTermRefreshTimer);
+  loadLongTermAvg();
+  longTermRefreshTimer = setInterval(loadLongTermAvg, 5 * 60_000);
+}
+
+// ── Range switch ──────────────────────────────────────────────────────────────
+function switchRange(range) {
+  if (range === chartRange) return;
+  chartRange = range;
+
+  // Update button states
+  for (const r of ['LIVE', '1D', '1W', '1M', '1Y']) {
+    const btn = document.getElementById('btn-range-' + r);
+    if (!btn) continue;
+    btn.className = 'sym-btn' + (r === range ? (range === 'LIVE' ? ' active-live' : ' active') : '');
+  }
+
+  document.getElementById('chart-range-label').textContent = RANGE_LABELS[range] || range;
+
+  clearInterval(ohlcRefreshTimer);
+  ohlcRefreshTimer = null;
+
+  if (range === 'LIVE') {
+    const d = chartData[chartSymbol];
+    priceChart.data.labels           = d.labels;
+    priceChart.data.datasets[0].data = d.prices;
+    priceChart.data.datasets[1].data = d.movAvg;
+    priceChart.data.datasets[2].data = d.anomalies;
+    priceChart.update('none');
+  } else {
+    loadOhlc();
+    ohlcRefreshTimer = setInterval(loadOhlc, 60_000);
+  }
+}
+
+async function loadOhlc() {
+  try {
+    const res  = await fetch(`/api/ohlc?symbol=${chartSymbol}&range=${chartRange}`);
+    const json = await res.json();
+    if (!json.ok || !json.data.length) return;
+
+    const labels = json.data.map(c => fmtCandleTime(c.time, chartRange));
+    const prices = json.data.map(c => c.close);
+    const movAvg = prices.map((_, i) => movingAverage(prices.slice(0, i + 1), 20));
+
+    priceChart.data.labels           = labels;
+    priceChart.data.datasets[0].data = prices;
+    priceChart.data.datasets[1].data = movAvg;
+    priceChart.data.datasets[2].data = [];
+    priceChart.update('none');
+  } catch (err) {
+    console.warn('[Dashboard] OHLC load error:', err.message);
+  }
+}
+
+function fmtCandleTime(unixSeconds, range) {
+  const d = new Date(unixSeconds * 1000);
+  if (range === '1D') return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  if (range === '1W') return d.toLocaleDateString('fr-FR', { weekday: 'short' }) + ' ' +
+    d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -488,11 +600,32 @@ function setDot(id, cls, txt) {
   if (lbl) lbl.textContent = txt;
 }
 
+// ── Trade feed filter ─────────────────────────────────────────────────────────
+function setTradeFilter(f) {
+  tradeFilter = f;
+  ['ALL', 'BTC', 'ETH'].forEach(id => {
+    document.getElementById('tf-' + id.toLowerCase()).className =
+      'sym-btn' + (id === f ? ' active' : '');
+  });
+  renderTradeList();
+}
+
+function renderTradeList() {
+  const list = document.getElementById('trade-list');
+  list.innerHTML = '';
+  const filtered = tradeFilter === 'ALL'
+    ? allTrades
+    : allTrades.filter(t => t.symbol.startsWith(tradeFilter));
+  filtered.forEach(({ el }) => list.appendChild(el));
+}
+
 // ── Trade handler ─────────────────────────────────────────────────────────────
 function onTrade(trade) {
-  const { symbol, price, volume, timestamp, exchange } = trade;
+  const { symbol, price, volume, timestamp, exchange, tradeId, side } = trade;
   const now = Date.now();
 
+  // Capture previous price before updating state
+  const prevPrice = state.prices[symbol] ?? price;
   state.prices[symbol] = price;
   state.tradeCount++;
   state.tradeSecBuf.push(now);
@@ -505,15 +638,12 @@ function onTrade(trade) {
   const priceEl = document.getElementById('tick-' + symbol);
   const chgEl   = document.getElementById('tick-' + symbol + '-chg');
   if (priceEl) {
-    const prev = state.prevPrices[symbol];
+    const dir = price >= prevPrice ? 'up' : 'down';
     priceEl.textContent = fmtPrice(price);
-    priceEl.className   = 'ticker-price ' + (prev ? (price >= prev ? 'up' : 'down') : '');
-    if (prev) {
-      const pct = ((price - prev) / prev * 100).toFixed(2);
-      chgEl.textContent = (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct) + '%';
-      chgEl.className   = 'ticker-change ' + (pct >= 0 ? 'up' : 'down');
-    }
-    state.prevPrices[symbol] = price;
+    priceEl.className   = 'ticker-price ' + dir;
+    const pct = ((price - prevPrice) / prevPrice * 100).toFixed(2);
+    chgEl.textContent = (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct) + '%';
+    chgEl.className   = 'ticker-change ' + dir;
   }
 
   // KPI prix du symbole actif
@@ -521,7 +651,7 @@ function onTrade(trade) {
     document.getElementById('kpi-btc-price').textContent = fmtPrice(price);
   }
 
-  // Chart — accumulate data for every symbol, render only the active one
+  // Chart — accumulate live data; render only when active symbol and in LIVE mode
   const d = chartData[symbol];
   if (d) {
     if (d.labels.length >= MAX_CHART_POINTS) {
@@ -530,49 +660,58 @@ function onTrade(trade) {
     d.labels.push(fmtTime(timestamp));
     d.prices.push(price);
     d.movAvg.push(movingAverage(d.prices, 20));
-
-    if (symbol === chartSymbol) priceChart.update('none');
+    if (symbol === chartSymbol && chartRange === 'LIVE') priceChart.update('none');
   }
 
-  // Trades feed (all symbols)
-  const list = document.getElementById('trade-list');
+  // ── Trade card ──────────────────────────────────────────────────────
+  const pctChg   = ((price - prevPrice) / prevPrice * 100);
+  const pctLabel = (pctChg >= 0 ? '+' : '') + pctChg.toFixed(3) + '%';
+  const priceDir = price >= prevPrice ? 'up' : 'down';
+
+  const sideRaw   = (side || '').toUpperCase();
+  const sideClass = sideRaw === 'BUY' ? 'side-buy' : sideRaw === 'SELL' ? 'side-sell' : 'side-unknown';
+  const sideLabel = sideRaw === 'BUY' ? '▲ BUY' : sideRaw === 'SELL' ? '▼ SELL' : '— —';
+
+  const notional = price * volume;
+  const shortId  = tradeId ? '#' + String(tradeId).slice(-8) : '—';
+
+  // Determine quantity unit label
+  const base = symbol.slice(0, 3); // BTC or ETH
+
   const item = document.createElement('div');
   item.className = 'trade-item';
   item.innerHTML = `
-    <span class="trade-price ${(state.prevPrices[symbol] || 0) <= price ? 'up' : 'down'}">${fmtPrice(price)}</span>
-    <span class="trade-vol">${Number(volume).toFixed(4)}</span>
-    <span class="trade-source source-${exchange}">${exchange}</span>
-    <span class="trade-time">${fmtTime(timestamp)}</span>
+    <div class="trade-row1">
+      <span class="trade-symbol-badge">${symbol}</span>
+      <span class="trade-side ${sideClass}">${sideLabel}</span>
+      <span class="trade-price ${priceDir}">${fmtPrice(price)}</span>
+      <span class="trade-chg ${priceDir}">${pctLabel}</span>
+      <span class="trade-time">${fmtTime(timestamp)}</span>
+    </div>
+    <div class="trade-row2">
+      Qté&nbsp;<strong>${Number(volume).toFixed(6)}&nbsp;${base}</strong>
+      &nbsp;·&nbsp;Valeur&nbsp;<strong>${fmtVol(notional)}</strong>
+      &nbsp;·&nbsp;<span class="trade-source source-${exchange}">${exchange}</span>
+      &nbsp;·&nbsp;${shortId}
+    </div>
   `;
-  list.insertBefore(item, list.firstChild);
-  if (list.children.length > 30) list.removeChild(list.lastChild);
 
-  document.getElementById('h-total').textContent  = state.tradeCount.toLocaleString();
+  allTrades.unshift({ symbol, price, volume, ts: new Date(timestamp).getTime(), el: item });
+  if (allTrades.length > 500) allTrades.pop();
+
+  if (tradeFilter === 'ALL' || symbol.startsWith(tradeFilter)) {
+    const list = document.getElementById('trade-list');
+    list.insertBefore(item, list.firstChild);
+    if (list.children.length > 30) list.removeChild(list.lastChild);
+  }
+
+  document.getElementById('h-total').textContent   = state.tradeCount.toLocaleString();
   document.getElementById('footer-ts').textContent = 'Dernière maj : ' + fmtTime(now) + ' UTC';
 }
 
 // ── Stats handler ─────────────────────────────────────────────────────────────
 function refreshStats(symbol, windows) {
-  const w5 = windows['5min'];
-  if (w5) {
-    document.getElementById('kpi-vol-5m').textContent     = fmtVol(w5.avgPrice * w5.cumVolume);
-    document.getElementById('kpi-vol-5m-sub').textContent = `~${w5.tradeCount} trades`;
-  }
-  if (windows['5min'])  document.getElementById('stat-avg5').textContent  = fmtPrice(windows['5min'].avgPrice);
-  if (windows['15min']) document.getElementById('stat-avg15').textContent = fmtPrice(windows['15min'].avgPrice);
-  if (windows['1h'])    document.getElementById('stat-avg1h').textContent = fmtPrice(windows['1h'].avgPrice);
-  if (windows['1min'])  document.getElementById('stat-cnt1').textContent  = windows['1min'].tradeCount;
-  if (windows['5min'])  document.getElementById('stat-cnt5').textContent  = windows['5min'].tradeCount;
-
-  const vol1h = windows['1h'] ? windows['1h'].cumVolume : 0;
-  for (const [key, w] of Object.entries({ '1min': windows['1min'], '5min': windows['5min'], '15min': windows['15min'], '1h': windows['1h'] })) {
-    if (!w) continue;
-    const pct = vol1h > 0 ? Math.min((w.cumVolume / vol1h) * 100, 100) : 0;
-    const barEl = document.getElementById('vbar-' + key);
-    const valEl = document.getElementById('vval-' + key);
-    if (barEl) barEl.style.width = pct + '%';
-    if (valEl) valEl.textContent = fmtVol(w.avgPrice * w.cumVolume);
-  }
+  // stats are computed client-side via computeClientStats / loadLongTermAvg
 }
 
 function onStats(data) {
@@ -607,6 +746,67 @@ function onAlert(alert) {
     d.anomalies.push({ x: d.labels[d.labels.length - 1], y: alert.price });
     if (d.anomalies.length > 50) d.anomalies.shift();
     priceChart.update('none');
+  }
+}
+
+// ── Client-side stats (1min avg + trade counts) ───────────────────────────────
+function computeClientStats() {
+  const now  = Date.now();
+  const sym  = chartSymbol;
+  const symT = allTrades.filter(t => t.symbol === sym);
+
+  // Trade counts
+  const t1 = symT.filter(t => now - t.ts <= 60_000);
+  const t5 = symT.filter(t => now - t.ts <= 5 * 60_000);
+  document.getElementById('stat-cnt1').textContent = t1.length;
+  document.getElementById('stat-cnt5').textContent = t5.length;
+
+  // 1min avg price
+  if (t1.length > 0) {
+    const avg = t1.reduce((s, t) => s + t.price, 0) / t1.length;
+    document.getElementById('stat-avg5').textContent = fmtPrice(avg);
+  }
+
+  // Volume glissant (USD) par fenêtre
+  const wins = {
+    '1min':  symT.filter(t => now - t.ts <= 60_000),
+    '5min':  symT.filter(t => now - t.ts <= 5  * 60_000),
+    '15min': symT.filter(t => now - t.ts <= 15 * 60_000),
+    '1h':    symT.filter(t => now - t.ts <= 60 * 60_000),
+  };
+  const vol1h = wins['1h'].reduce((s, t) => s + t.price * t.volume, 0);
+  for (const [key, trades] of Object.entries(wins)) {
+    const volUsd = trades.reduce((s, t) => s + t.price * t.volume, 0);
+    const pct    = vol1h > 0 ? Math.min((volUsd / vol1h) * 100, 100) : 0;
+    const barEl  = document.getElementById('vbar-' + key);
+    const valEl  = document.getElementById('vval-' + key);
+    if (barEl) barEl.style.width = pct + '%';
+    if (valEl) valEl.textContent = fmtVol(volUsd);
+  }
+}
+setInterval(computeClientStats, 2000);
+
+// ── Long-term averages from OHLC (7j / 31j) ──────────────────────────────────
+let longTermRefreshTimer = null;
+
+async function loadLongTermAvg() {
+  try {
+    const [r7, r31] = await Promise.all([
+      fetch(`/api/ohlc?symbol=${chartSymbol}&range=1W`),
+      fetch(`/api/ohlc?symbol=${chartSymbol}&range=1M`),
+    ]);
+    const [d7, d31] = await Promise.all([r7.json(), r31.json()]);
+
+    if (d7.ok && d7.data.length > 0) {
+      const avg = d7.data.reduce((s, c) => s + c.close, 0) / d7.data.length;
+      document.getElementById('stat-avg15').textContent = fmtPrice(avg);
+    }
+    if (d31.ok && d31.data.length > 0) {
+      const avg = d31.data.reduce((s, c) => s + c.close, 0) / d31.data.length;
+      document.getElementById('stat-avg1h').textContent = fmtPrice(avg);
+    }
+  } catch (err) {
+    console.warn('[Dashboard] Long-term avg error:', err.message);
   }
 }
 
@@ -671,6 +871,8 @@ async function loadInitial() {
 }
 
 loadInitial();
+loadLongTermAvg();
+longTermRefreshTimer = setInterval(loadLongTermAvg, 5 * 60_000);
 </script>
 </body>
 </html>

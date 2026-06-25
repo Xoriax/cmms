@@ -40,6 +40,7 @@ async function run() {
           timestamp: new Date(raw.timestamp),
           exchange:  raw.exchange,
           tradeId:   raw.tradeId,
+          side:      raw.side || null,
         };
 
         // Fire-and-forget MongoDB write

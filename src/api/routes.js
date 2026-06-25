@@ -61,6 +61,46 @@ router.get('/alerts', async (req, res) => {
   }
 });
 
+// GET /api/ohlc?symbol=BTCUSD&range=1D|1W|1M|1Y
+const OHLC_CONFIG = {
+  '1D': { granularity: 900,   hours: 24 },
+  '1W': { granularity: 3600,  hours: 24 * 7 },
+  '1M': { granularity: 21600, hours: 24 * 30 },
+  '1Y': { granularity: 86400, hours: 24 * 300 },
+};
+
+router.get('/ohlc', async (req, res) => {
+  try {
+    const symbol = (req.query.symbol || 'BTCUSD').toUpperCase();
+    const range  = req.query.range || '1D';
+    const cfg    = OHLC_CONFIG[range];
+    if (!cfg) return res.status(400).json({ ok: false, error: 'Invalid range. Use 1D, 1W, 1M or 1Y' });
+
+    // BTCUSD → BTC-USD, ETHUSD → ETH-USD
+    const productId = symbol.slice(0, 3) + '-' + symbol.slice(3);
+    const end   = new Date();
+    const start = new Date(end.getTime() - cfg.hours * 3600 * 1000);
+
+    const url = `https://api.exchange.coinbase.com/products/${productId}/candles` +
+      `?granularity=${cfg.granularity}&start=${start.toISOString()}&end=${end.toISOString()}`;
+
+    const upstream = await fetch(url, { headers: { 'User-Agent': 'cmms/1.0' } });
+    if (!upstream.ok) return res.status(502).json({ ok: false, error: `Coinbase returned ${upstream.status}` });
+
+    const candles = await upstream.json();
+    if (!Array.isArray(candles)) return res.status(502).json({ ok: false, error: 'Unexpected response from Coinbase' });
+
+    // Coinbase: [time, low, high, open, close, volume] newest first → sort asc
+    const data = candles
+      .sort((a, b) => a[0] - b[0])
+      .map(([time, low, high, open, close, volume]) => ({ time, open, high, low, close, volume }));
+
+    res.json({ ok: true, count: data.length, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // GET /api/health — pipeline health check
 router.get('/health', (_req, res) => {
   res.json({ ok: true, ts: new Date().toISOString() });

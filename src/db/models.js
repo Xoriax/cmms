@@ -9,6 +9,7 @@ const tradeRawSchema = new Schema({
   timestamp: { type: Date,   required: true },
   exchange:  { type: String, required: true },
   tradeId:   { type: String },
+  side:      { type: String }, // 'BUY' | 'SELL'
 }, { versionKey: false });
 
 tradeRawSchema.index({ timestamp: 1 }, { expireAfterSeconds: 86400 }); // 24h TTL
