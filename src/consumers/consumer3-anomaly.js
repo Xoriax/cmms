@@ -21,10 +21,11 @@ const consumer = kafka.consumer({ groupId: GROUP_ID });
 // priceHistory: trades within last 10s for price spike detection
 const state = {};
 
-const VOL_WINDOW_SIZE = 50;  // trades used to compute moving average volume
-const VOL_SPIKE_MULT  = 3;   // volume > 3× moving avg triggers alert
-const PRICE_WINDOW_MS = 10_000; // 10-second window
-const PRICE_SPIKE_PCT = 0.01;   // 1% price change
+const VOL_WINDOW_SIZE  = 50;    // trades used to compute moving average volume
+const VOL_SPIKE_MULT   = 2;    // volume > 2× moving avg triggers alert
+const VOL_MIN_WARMUP   = 5;    // start detecting after at least 5 trades
+const PRICE_WINDOW_MS  = 10_000; // 10-second window
+const PRICE_SPIKE_PCT  = 0.005;  // 0.5% price change
 
 function getOrCreate(symbol) {
   if (!state[symbol]) {
@@ -59,7 +60,7 @@ async function run() {
 
         // ── Volume spike detection ──────────────────────────────────────────
         const avgVol = movingAvgVolume(s.recentTrades);
-        if (avgVol > 0 && volume > avgVol * VOL_SPIKE_MULT) {
+        if (avgVol > 0 && s.recentTrades.length >= VOL_MIN_WARMUP && volume > avgVol * VOL_SPIKE_MULT) {
           const alert = {
             symbol, type: 'LARGE_VOLUME', price, volume,
             threshold: avgVol * VOL_SPIKE_MULT,

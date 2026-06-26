@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Crypto Market Monitor — Real-Time Pipeline</title>
+<title>Crypto Market Monitor - Real-Time Pipeline</title>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
@@ -89,7 +89,7 @@
   /* ── KPI cards ───────────────────────────────────────────────────── */
   .kpi-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1px;
     background: var(--border);
     border-bottom: 1px solid var(--border);
@@ -234,16 +234,37 @@
     display: flex;
     gap: 16px;
   }
+
+  /* ── Light theme ─────────────────────────────────────────────────── */
+  [data-theme="light"] {
+    --bg:      #f6f8fa;
+    --surface: #ffffff;
+    --border:  #d0d7de;
+    --text:    #1f2328;
+    --muted:   #656d76;
+  }
+  [data-theme="light"] body { background: var(--bg); }
+  [data-theme="light"] .ticker { background: #eaeef2; }
+
+  /* ── Theme toggle button ─────────────────────────────────────────── */
+  .theme-btn {
+    padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted);
+    cursor: pointer; font-size: 13px; font-family: inherit;
+    transition: all .15s;
+    flex-shrink: 0;
+  }
+  .theme-btn:hover { border-color: var(--blue); color: var(--text); }
 </style>
 </head>
 <body>
 
 <!-- ── Header ─────────────────────────────────────────────────────────── -->
 <header>
-  <span style="font-size:18px">&#128200;</span>
-  <h1>Crypto Market Monitor &mdash; Real-Time Pipeline</h1>
+  <h1>Crypto Market Monitor - Real-Time Pipeline</h1>
   <span style="font-size:11px;padding:2px 8px;border-radius:3px;background:rgba(0,82,255,.15);color:#5c8aff">Coinbase</span>
   <span><span class="live-dot" id="live-dot"></span><span id="live-label" style="font-size:11px;color:var(--muted)">Connecting...</span></span>
+  <button type="button" class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Basculer thème">Dark</button>
 </header>
 
 <!-- ── Ticker ──────────────────────────────────────────────────────────── -->
@@ -263,7 +284,7 @@
 <!-- ── KPI Cards ───────────────────────────────────────────────────────── -->
 <div class="kpi-row">
   <div class="kpi">
-    <div class="kpi-label" id="kpi-active-label">BTC/USD — Prix actuel</div>
+    <div class="kpi-label" id="kpi-active-label">BTC/USD - Prix actuel</div>
     <div class="kpi-value" id="kpi-btc-price">$107,000.00</div>
     <div class="kpi-sub" id="kpi-btc-chg">+0.00% vs 1h</div>
   </div>
@@ -275,7 +296,12 @@
   <div class="kpi">
     <div class="kpi-label">Anomalies détectées</div>
     <div class="kpi-value" id="kpi-alerts">0</div>
-    <div class="kpi-sub">&#9651; dernières 10 min</div>
+    <div class="kpi-sub">dernières 10 min</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Vol glissant 5min</div>
+    <div class="kpi-value" id="kpi-vol5">$0.00</div>
+    <div class="kpi-sub" id="kpi-vol5-trades">~0 trades</div>
   </div>
 </div>
 
@@ -285,7 +311,7 @@
   <!-- Chart -->
   <div class="chart-panel">
     <div class="chart-panel-title">
-      <span>&#9650; PRIX <span id="chart-symbol-label">BTC</span>/USD &mdash; <span id="chart-range-label">LIVE</span></span>
+      <span>PRIX <span id="chart-symbol-label">BTC</span>/USD - <span id="chart-range-label">LIVE</span></span>
       <div class="chart-controls">
         <div class="sym-btn-group">
           <button type="button" id="btn-btc" class="sym-btn active" onclick="switchSymbol('BTCUSD')">BTC</button>
@@ -315,7 +341,7 @@
     <!-- Trades feed -->
     <div class="trades-panel">
       <div class="panel-title">
-        &#9889; TRADES RÉCENTS
+        TRADES RÉCENTS
         <div class="sym-btn-group" style="margin-left:auto">
           <button type="button" id="tf-all" class="sym-btn active" onclick="setTradeFilter('ALL')">ALL</button>
           <button type="button" id="tf-btc" class="sym-btn" onclick="setTradeFilter('BTC')">BTC</button>
@@ -327,7 +353,7 @@
 
     <!-- Alerts -->
     <div class="alerts-panel">
-      <div class="panel-title">&#9889; ALERTES TEMPS RÉEL</div>
+      <div class="panel-title">ALERTES TEMPS RÉEL</div>
       <div class="alert-list" id="alert-list">
         <div style="color:var(--muted);font-size:11px;padding:8px 0">Aucune alerte pour le moment...</div>
       </div>
@@ -341,7 +367,7 @@
 
   <!-- Volume glissant -->
   <div class="panel">
-    <div class="panel-title">&#9641; VOLUME GLISSANT (<span id="vol-symbol-label">BTC</span>)</div>
+    <div class="panel-title">VOLUME GLISSANT (<span id="vol-symbol-label">BTC</span>)</div>
     <table class="vol-table">
       <tr><td>1 min</td><td class="vol-td-bar"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-1min"></div></div></td><td id="vval-1min">$0.00</td></tr>
       <tr><td>5 min</td><td class="vol-td-bar"><div class="vol-bar-wrap"><div class="vol-bar" id="vbar-5min"></div></div></td><td id="vval-5min">$0.00</td></tr>
@@ -352,11 +378,11 @@
 
   <!-- Stats card -->
   <div class="panel">
-    <div class="panel-title">&#9641; STATISTIQUES MARCHÉ</div>
+    <div class="panel-title">STATISTIQUES MARCHÉ</div>
     <div class="health-list" id="stats-list">
-      <div class="health-row"><span class="health-label">Prix moyen 1min</span><span id="stat-avg5" class="health-val">—</span></div>
-      <div class="health-row"><span class="health-label">Prix moyen 7j</span><span id="stat-avg15" class="health-val">—</span></div>
-      <div class="health-row"><span class="health-label">Prix moyen 31j</span><span id="stat-avg1h" class="health-val">—</span></div>
+      <div class="health-row"><span class="health-label">Prix moyen 1min</span><span id="stat-avg5" class="health-val">-</span></div>
+      <div class="health-row"><span class="health-label">Prix moyen 7j</span><span id="stat-avg15" class="health-val">-</span></div>
+      <div class="health-row"><span class="health-label">Prix moyen 31j</span><span id="stat-avg1h" class="health-val">-</span></div>
       <div class="health-row"><span class="health-label">Trades 1min</span><span id="stat-cnt1" class="health-val">0</span></div>
       <div class="health-row"><span class="health-label">Trades 5min</span><span id="stat-cnt5" class="health-val">0</span></div>
     </div>
@@ -364,7 +390,7 @@
 
   <!-- Pipeline health -->
   <div class="panel">
-    <div class="panel-title">&#9723; PIPELINE &mdash; SANTÉ SYSTÈME</div>
+    <div class="panel-title">PIPELINE - SANTÉ SYSTÈME</div>
     <div class="health-list">
       <div class="health-row">
         <span class="health-label">WebSocket Coinbase</span>
@@ -487,7 +513,7 @@ function switchSymbol(sym) {
   const label = sym === 'BTCUSD' ? 'BTC' : 'ETH';
   document.getElementById('chart-symbol-label').textContent = label;
   document.getElementById('vol-symbol-label').textContent   = label;
-  document.getElementById('kpi-active-label').textContent   = `${label}/USD — Prix actuel`;
+  document.getElementById('kpi-active-label').textContent   = `${label}/USD - Prix actuel`;
 
   document.getElementById('btn-btc').classList.toggle('active', sym === 'BTCUSD');
   document.getElementById('btn-eth').classList.toggle('active', sym === 'ETHUSD');
@@ -642,7 +668,7 @@ function onTrade(trade) {
     priceEl.textContent = fmtPrice(price);
     priceEl.className   = 'ticker-price ' + dir;
     const pct = ((price - prevPrice) / prevPrice * 100).toFixed(2);
-    chgEl.textContent = (pct >= 0 ? '▲' : '▼') + ' ' + Math.abs(pct) + '%';
+    chgEl.textContent = (pct >= 0 ? '+' : '-') + Math.abs(pct) + '%';
     chgEl.className   = 'ticker-change ' + dir;
   }
 
@@ -670,10 +696,10 @@ function onTrade(trade) {
 
   const sideRaw   = (side || '').toUpperCase();
   const sideClass = sideRaw === 'BUY' ? 'side-buy' : sideRaw === 'SELL' ? 'side-sell' : 'side-unknown';
-  const sideLabel = sideRaw === 'BUY' ? '▲ BUY' : sideRaw === 'SELL' ? '▼ SELL' : '— —';
+  const sideLabel = sideRaw === 'BUY' ? 'BUY' : sideRaw === 'SELL' ? 'SELL' : '-';
 
   const notional = price * volume;
-  const shortId  = tradeId ? '#' + String(tradeId).slice(-8) : '—';
+  const shortId  = tradeId ? '#' + String(tradeId).slice(-8) : '-';
 
   // Determine quantity unit label
   const base = symbol.slice(0, 3); // BTC or ETH
@@ -711,7 +737,12 @@ function onTrade(trade) {
 
 // ── Stats handler ─────────────────────────────────────────────────────────────
 function refreshStats(symbol, windows) {
-  // stats are computed client-side via computeClientStats / loadLongTermAvg
+  if (symbol !== chartSymbol) return;
+  const w5 = windows && windows['5min'];
+  if (w5) {
+    document.getElementById('kpi-vol5').textContent        = fmtVol(w5.cumVolume * (state.prices[symbol] || 0));
+    document.getElementById('kpi-vol5-trades').textContent = `~${w5.tradeCount} trades`;
+  }
 }
 
 function onStats(data) {
@@ -873,6 +904,21 @@ async function loadInitial() {
 loadInitial();
 loadLongTermAvg();
 longTermRefreshTimer = setInterval(loadLongTermAvg, 5 * 60_000);
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  document.getElementById('theme-btn').textContent = next === 'dark' ? 'Dark' : 'Light';
+  try { localStorage.setItem('cmms-theme', next); } catch (_) {}
+}
+(function initTheme() {
+  const saved = localStorage.getItem('cmms-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = saved === 'dark' ? 'Dark' : 'Light';
+})();
 </script>
 </body>
 </html>
