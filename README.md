@@ -27,70 +27,99 @@ Coinbase WS ──► Kafka (crypto.trades.raw, 3 partitions)
 
 - Docker & Docker Compose
 - Node.js >= 18
+- PM2 (gestionnaire de processus)
 
-## Startup (in order)
+```bash
+npm install -g pm2
+```
 
-### 1. Copy environment file
+## Démarrage
+
+### 1. Copier le fichier d'environnement
 
 ```bash
 cp .env.example .env
 ```
 
-### 2. Start Kafka + MongoDB
+### 2. Démarrer Kafka + MongoDB
 
 ```bash
 docker-compose up -d
 ```
 
-Wait ~20 seconds for Kafka to be fully ready.
+Attendre ~20 secondes que Kafka soit prêt.
 
-### 3. Install dependencies
+### 3. Installer les dépendances
 
 ```bash
 npm install
 ```
 
-### 4. Create Kafka topic (run once)
+### 4. Créer le topic Kafka (une seule fois)
 
 ```bash
-node src/kafka/admin.js
+npm run kafka:init
 ```
 
-Expected output: `Topic "crypto.trades.raw" created with 3 partitions`
+Résultat attendu : `Topic "crypto.trades.raw" created with 3 partitions`
 
-### 5. Start the API server
+### 5. Démarrer tout le pipeline
 
 ```bash
-node src/api/server.js
+npm start
 ```
 
-### 6. Start all consumers (3 separate terminals)
+PM2 démarre les 5 processus en arrière-plan :
+
+| Processus        | Rôle                        |
+|------------------|-----------------------------|
+| `cmms-api`       | Serveur Express + Socket.IO |
+| `cmms-normalizer`| Consumer 1 — normalisation  |
+| `cmms-aggregator`| Consumer 2 — agrégation     |
+| `cmms-anomaly`   | Consumer 3 — détection      |
+| `cmms-producer`  | Producteur Coinbase WS      |
+
+### 6. Ouvrir le dashboard
+
+**http://localhost:3000**
+
+Le voyant LIVE passe au vert en quelques secondes.
+
+---
+
+## Gestion du pipeline (PM2)
 
 ```bash
-node src/consumers/consumer1-normalizer.js
-node src/consumers/consumer2-aggregator.js
-node src/consumers/consumer3-anomaly.js
+npm run status    # état de tous les processus
+npm run logs      # logs en temps réel (tous les processus)
+npm run stop      # arrêter tout
+npm run restart   # redémarrer tout
+npm run reload    # rechargement sans downtime
+npm run flush     # vider les fichiers de logs
 ```
 
-### 7. Start the data producer
+Les logs sont écrits dans le dossier `logs/` :
 
-```bash
-node src/ingestion/coinbaseProducer.js
+```
+logs/
+  api.out.log
+  api.err.log
+  normalizer.out.log
+  aggregator.out.log
+  anomaly.out.log
+  producer.out.log
 ```
 
-### 8. Open the dashboard
-
-Navigate to: **http://localhost:3000**
-
-The LIVE indicator turns green within seconds of trades flowing in.
+---
 
 ## REST API
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/trades?symbol=BTCUSDT&limit=50` | Recent normalized trades |
-| `GET /api/stats?symbol=BTCUSDT&window=5min` | Sliding window aggregates |
-| `GET /api/alerts?limit=20` | Detected anomalies |
+| `GET /api/trades?symbol=BTCUSDT&limit=50` | Trades normalisés récents |
+| `GET /api/stats?symbol=BTCUSDT&window=5min` | Agrégats fenêtre glissante |
+| `GET /api/alerts?limit=20` | Anomalies détectées |
+| `GET /api/ohlc?symbol=BTCUSD&range=1D` | Chandeliers OHLC (1D/1W/1M/1Y) |
 | `GET /api/health` | Health check |
 
 ## Socket.IO Events (server → client)
@@ -101,14 +130,14 @@ The LIVE indicator turns green within seconds of trades flowing in.
 | `stats` | `{ symbol, windows: { '1min': { avgPrice, cumVolume, tradeCount }, … } }` |
 | `alert` | `{ symbol, type, message, price, volume, timestamp, exchange }` |
 
-## Anomaly Detection Rules
+## Règles de détection d'anomalies
 
-- **LARGE_VOLUME**: trade volume > 3× moving average of last 50 trades
-- **PRICE_SPIKE**: price change >= 1% within a 10-second window
+- **LARGE_VOLUME** : volume du trade > 3× la moyenne mobile des 50 derniers trades
+- **PRICE_SPIKE** : variation de prix >= 1% sur une fenêtre de 10 secondes
 
-## Stop everything
+## Arrêt
 
 ```bash
+npm run stop
 docker-compose down
-# Ctrl+C each Node process
 ```

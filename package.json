@@ -10,7 +10,14 @@
     "consumer:1": "node src/consumers/consumer1-normalizer.js",
     "consumer:2": "node src/consumers/consumer2-aggregator.js",
     "consumer:3": "node src/consumers/consumer3-anomaly.js",
-    "api": "node src/api/server.js"
+    "api": "node src/api/server.js",
+    "start": "pm2 start ecosystem.config.js",
+    "stop": "pm2 stop ecosystem.config.js",
+    "restart": "pm2 restart ecosystem.config.js",
+    "reload": "pm2 reload ecosystem.config.js",
+    "logs": "pm2 logs",
+    "status": "pm2 status",
+    "flush": "pm2 flush"
   },
   "dependencies": {
     "kafkajs": "^2.2.4",
